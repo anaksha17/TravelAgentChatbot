@@ -235,7 +235,7 @@ async function clearConversation() {
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     if (sidebar) {
-        sidebar.style.display = sidebar.style.display === 'none' ? 'flex' : 'none';
+       sidebar.classList.toggle('visible');
     }
 }
 

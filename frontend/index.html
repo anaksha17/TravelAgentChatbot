@@ -3,104 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TravelBuddy AI - RAG Assistant</title>
+    <title>Travel Buddy AI - RAG Assistant</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="dark-theme">
     <div class="app-container">
-        <!-- Header -->
+        
         <header class="app-header">
-            <div class="header-content">
-                <div class="logo-section">
-                    <div class="logo-icon">🌍</div>
-                    <div class="logo-text">
-                        <h1>TravelBuddy AI</h1>
-                        <p>Smart Travel Assistant with Memory</p>
-                    </div>
+            <div class="logo-section">
+                <div class="logo-icon">✈️</div>
+                <div class="logo-text">
+                    <h1>Travel Buddy AI</h1>
+                    <p>Intelligent Travel Planning</p>
                 </div>
-                <div class="status-indicators">
-                    <span id="connectionStatus" class="status-indicator">
-                        <span class="status-dot"></span>
-                        Connecting...
-                    </span>
-                    <span id="ragStatus" class="status-indicator">
-                        <span class="status-dot rag-dot"></span>
-                        RAG: Ready
-                    </span>
-                </div>
+            </div>
+            <div class="status-indicators">
+                <button class="header-action-btn" onclick="toggleSidebar()" title="Toggle Memory Panel">
+                    <span class="icon">🧠</span>
+                </button>
+                <button class="header-action-btn" onclick="clearConversation()" title="Clear History">
+                    <span class="icon">🗑️</span>
+                </button>
+                <span id="connectionStatus" class="status-badge">
+                    <span class="status-dot"></span>
+                    Connecting
+                </span>
             </div>
         </header>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Chat Area -->
-            <div class="chat-area">
+        <div class="main-layout">
+            
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <h3>User Memory <span class="badge" id="ragStatus">RAG Active</span></h3>
+                    <button class="sidebar-toggle-mobile" onclick="toggleSidebar()">✕</button>
+                </div>
+                
+                <div class="context-section">
+                    <h4>Memory Stats</h4>
+                    <div class="memory-stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-icon">💬</span>
+                            <span class="stat-value" id="conversationCount">0</span>
+                            <span class="stat-label">Conversations</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-icon">🗺️</span>
+                            <span class="stat-value" id="contextCount">0</span>
+                            <span class="stat-label">Preferences</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="context-section preference-input-section">
+                    <h4>Set Travel Profile</h4>
+                    <form id="preferenceForm" class="preference-form">
+                        <div class="form-group">
+                            <label for="prefDestination">Primary Destination</label>
+                            <input type="text" id="prefDestination" placeholder="e.g., Southeast Asia, Italy, Beach">
+                        </div>
+                        <div class="form-group">
+                            <label for="prefBudget">Budget Style</label>
+                            <select id="prefBudget">
+                                <option value="">Select Budget</option>
+                                <option value="Budget">💰 Budget (Hostels/Street Food)</option>
+                                <option value="Mid-Range" selected>💶 Mid-Range (Boutique Hotels/Restaurants)</option>
+                                <option value="Luxury">💎 Luxury (5-Star/Exclusive)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="prefStyle">Travel Style</label>
+                            <select id="prefStyle">
+                                <option value="">Select Style</option>
+                                <option value="Adventure">⛰️ Adventure</option>
+                                <option value="Relaxation">🧘 Relaxation</option>
+                                <option value="Culture/History">🏛️ Culture/History</option>
+                                <option value="Family">👨‍👩‍👧‍👦 Family</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="savePreferencesBtn" class="primary-action-btn">Save Profile to AI Memory</button>
+                    </form>
+                </div>
+                
+                <div class="context-section">
+                    <h4>Recent Context Used</h4>
+                    <div class="context-items" id="contextItems">
+                        <p class="no-context">Start chatting to track your travel style, destinations, and budget.</p>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="chat-main-area">
                 <div class="chat-messages" id="chatMessages">
-                    <!-- Welcome Message -->
-                    <div class="message assistant-message">
-                        <div class="message-avatar">🤖</div>
+                    <div class="message assistant-message welcome-message">
+                        <div class="message-avatar">✈️</div>
                         <div class="message-content">
                             <div class="message-header">
-                                <span class="assistant-label">TravelBuddy AI</span>
-                                <span class="message-time">Just now</span>
+                                <span class="assistant-label">Travel Buddy AI</span>
+                                <span class="message-time">Hello!</span>
                             </div>
                             <div class="message-text">
-                                <h3>Welcome to TravelBuddy AI!</h3>
-                                <p>I'm your intelligent travel assistant powered by RAG (Retrieval-Augmented Generation). I can help you with:</p>
-                                
-                                <div class="capabilities-grid">
-                                    <div class="capability-item">
-                                        <span>🗺️</span>
-                                        Trip planning & itineraries
-                                    </div>
-                                    <div class="capability-item">
-                                        <span>🏨</span>
-                                        Hotel recommendations
-                                    </div>
-                                    <div class="capability-item">
-                                        <span>✈️</span>
-                                        Flight booking advice
-                                    </div>
-                                    <div class="capability-item">
-                                        <span>💰</span>
-                                        Budget planning
-                                    </div>
-                                    <div class="capability-item">
-                                        <span>🎒</span>
-                                        Packing & travel tips
-                                    </div>
-                                    <div class="capability-item">
-                                        <span>🌟</span>
-                                        Local attractions
-                                    </div>
-                                </div>
-                                
-                                <p><strong>I remember our conversations</strong> and get smarter with each interaction!</p>
+                                <h3>Your Personal Travel Planner.</h3>
+                                <p>Ask me anything about trip planning, destinations, budgets, and more. Use the **🧠 button** above to set your travel profile manually!</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Quick Suggestions -->
-                <div class="quick-suggestions" id="quickSuggestions">
-                    <h4>Try asking me about:</h4>
-                    <div class="suggestion-buttons">
-                        <button class="suggestion-btn" onclick="sendSuggestion('Plan a 7-day trip to Japan on a budget')">
-                            🗾 Budget Japan Trip
-                        </button>
-                        <button class="suggestion-btn" onclick="sendSuggestion('Best time to visit Europe?')">
-                            🇪🇺 Europe Travel Time
-                        </button>
-                        <button class="suggestion-btn" onclick="sendSuggestion('What should I pack for tropical vacation?')">
-                            🏝️ Tropical Packing
-                        </button>
-                        <button class="suggestion-btn" onclick="sendSuggestion('Find family-friendly activities in Dubai')">
-                            👨‍👩‍👧‍👦 Dubai Family Fun
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Typing Indicator -->
                 <div class="typing-indicator" id="typingIndicator" style="display: none;">
                     <div class="message-avatar">🤖</div>
                     <div class="typing-content">
@@ -109,96 +118,46 @@
                             <span></span>
                             <span></span>
                         </div>
-                        <div class="typing-text">TravelBuddy is thinking...</div>
+                        <div class="typing-text">Travel Buddy is consulting its RAG memory...</div>
+                    </div>
+                </div>
+                
+                <div class="quick-suggestions-bottom" id="quickSuggestions">
+                    <div class="suggestion-buttons">
+                        <button class="suggestion-btn" onclick="sendSuggestion('Plan a 7-day trip to Japan on a budget')">
+                            🗾 Budget Japan Trip
+                        </button>
+                        <button class="suggestion-btn" onclick="sendSuggestion('Best time to visit Europe?')">
+                            🇪🇺 Europe Travel Season
+                        </button>
+                        <button class="suggestion-btn" onclick="sendSuggestion('What should I pack for tropical vacation?')">
+                            🏝️ Tropical Packing List
+                        </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Sidebar -->
-            <aside class="sidebar" id="sidebar">
-                <div class="sidebar-header">
-                    <h3>Memory & Context</h3>
-                    <button class="sidebar-toggle" onclick="toggleSidebar()">✕</button>
-                </div>
-                
-                <div class="context-section">
-                    <h4>Memory Stats</h4>
-                    <div class="memory-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Conversations</span>
-                            <span class="stat-value" id="conversationCount">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Context Items</span>
-                            <span class="stat-value" id="contextCount">0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="context-section">
-                    <h4>Recent Context</h4>
-                    <div class="context-items" id="contextItems">
-                        <p class="no-context">Start a conversation to see context</p>
-                    </div>
-                </div>
-            </aside>
+            
         </div>
 
-        <!-- Input Area -->
-        <div class="input-area">
+        <div class="input-area-fixed">
             <div class="input-wrapper">
                 <textarea 
                     id="messageInput" 
-                    placeholder="Ask me anything about travel..."
+                    placeholder="Plan your next adventure..."
                     rows="1"
                     maxlength="500"
                 ></textarea>
                 <button id="sendButton" disabled>
-                    <span>📤</span>
+                    <span class="icon">🚀</span>
                 </button>
             </div>
             <div class="input-footer">
                 <span class="char-counter">0/500</span>
-                <span class="model-info">Powered by Llama 3.1 + RAG</span>
-            </div>
-        </div>
-
-        <!-- Context Panel (for debugging RAG) -->
-        <div class="context-panel" id="contextPanel" style="display: none;">
-            <div class="context-header">
-                <h4>🧠 RAG Context</h4>
-                <button onclick="toggleContextPanel()">❌</button>
-            </div>
-            <div class="context-content" id="contextContent">
-                <!-- RAG context will be displayed here -->
+                <span class="model-info">Powered by Llama 3.1 + RAG Memory</span>
             </div>
         </div>
     </div>
-
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-        <button class="quick-action-btn" onclick="toggleSidebar()" title="Toggle Memory Panel">
-            🧠
-        </button>
-        <button class="quick-action-btn" onclick="toggleContextPanel()" title="Show RAG Context">
-            🔍
-        </button>
-        <button class="quick-action-btn" onclick="clearConversation()" title="Clear History">
-            🗑️
-        </button>
-        <button class="quick-action-btn" onclick="checkApiStatus()" title="Check Status">
-            ⚡
-        </button>
-    </div>
-
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <p>Connecting to AI...</p>
-        </div>
-    </div>
-
+    <div class="context-panel" id="contextPanel" style="display: none;"></div>
     <script src="/static/script.js"></script>
 </body>
 </html>
