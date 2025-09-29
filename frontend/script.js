@@ -461,7 +461,58 @@ function addDemoContext() {
     
     updateContextPanel(['conversation_history', 'user_preferences'], ['llama-3.1-8b']);
 }
+// Add to DOM elements
+const recentTrips = document.getElementById('recentTrips');
 
+// Add to DOMContentLoaded event
+document.addEventListener('DOMContentLoaded', function() {
+    fetchRecentChats();
+});
+
+// Add function to fetch and display recent chats
+async function fetchRecentChats() {
+    try {
+        const response = await fetch(`${API_BASE}/api/memory/${userId}`);
+        const data = await response.json();
+        const recentTripsDiv = document.getElementById('recentTrips');
+        recentTripsDiv.innerHTML = ''; // Clear existing content
+        const preferences = data.user_preferences || {};
+        const destinations = preferences.destinations_interested || [];
+        if (destinations.length > 0) {
+            destinations.slice(0, 3).forEach(dest => { // Limit to 3 for UI
+                const tripItem = document.createElement('div');
+                tripItem.className = 'trip-item';
+                tripItem.textContent = `Explore ${dest}`;
+                tripItem.style.cursor = 'pointer';
+                tripItem.style.padding = '0.5rem';
+                tripItem.style.margin = '0.2rem 0';
+                tripItem.style.background = 'rgba(255, 255, 255, 0.1)';
+                tripItem.style.borderRadius = '4px';
+                tripItem.onclick = () => sendSuggestion(`Plan a trip to ${dest}`);
+                recentTripsDiv.appendChild(tripItem);
+            });
+        } else {
+            recentTripsDiv.innerHTML = '<p class="no-trips">Start chatting to see trip ideas based on your interests!</p>';
+        }
+    } catch (error) {
+        console.error('Error fetching recent chats:', error);
+        recentTrips.innerHTML = '<p class="no-trips">Error loading trip ideas.</p>';
+    }
+}
+
+// Update sendMessage to refresh recent chats
+const originalSendMessage = sendMessage;
+sendMessage = async function() {
+    await originalSendMessage.apply(null, arguments);
+    await fetchRecentChats();
+};
+
+// Update clearConversation to refresh recent chats
+const originalClearConversation = clearConversation;
+clearConversation = async function() {
+    await originalClearConversation.apply(null, arguments);
+    await fetchRecentChats();
+};
 // Export functions for global access
 window.sendSuggestion = sendSuggestion;
 window.sendMessage = sendMessage;

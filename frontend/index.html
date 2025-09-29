@@ -18,9 +18,6 @@
                 </div>
             </div>
             <div class="status-indicators">
-                <button class="header-action-btn" onclick="toggleSidebar()" title="Toggle Memory Panel">
-                    <span class="icon">🧠</span>
-                </button>
                 <button class="header-action-btn" onclick="clearConversation()" title="Clear History">
                     <span class="icon">🗑️</span>
                 </button>
@@ -32,68 +29,13 @@
         </header>
 
         <div class="main-layout">
-            
-            <aside class="sidebar" id="sidebar">
-                <div class="sidebar-header">
-                    <h3>User Memory <span class="badge" id="ragStatus">RAG Active</span></h3>
-                    <button class="sidebar-toggle-mobile" onclick="toggleSidebar()">✕</button>
-                </div>
-                
-                <div class="context-section">
-                    <h4>Memory Stats</h4>
-                    <div class="memory-stats-grid">
-                        <div class="stat-card">
-                            <span class="stat-icon">💬</span>
-                            <span class="stat-value" id="conversationCount">0</span>
-                            <span class="stat-label">Conversations</span>
-                        </div>
-                        <div class="stat-card">
-                            <span class="stat-icon">🗺️</span>
-                            <span class="stat-value" id="contextCount">0</span>
-                            <span class="stat-label">Preferences</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="context-section preference-input-section">
-                    <h4>Set Travel Profile</h4>
-                    <form id="preferenceForm" class="preference-form">
-                        <div class="form-group">
-                            <label for="prefDestination">Primary Destination</label>
-                            <input type="text" id="prefDestination" placeholder="e.g., Southeast Asia, Italy, Beach">
-                        </div>
-                        <div class="form-group">
-                            <label for="prefBudget">Budget Style</label>
-                            <select id="prefBudget">
-                                <option value="">Select Budget</option>
-                                <option value="Budget">💰 Budget (Hostels/Street Food)</option>
-                                <option value="Mid-Range" selected>💶 Mid-Range (Boutique Hotels/Restaurants)</option>
-                                <option value="Luxury">💎 Luxury (5-Star/Exclusive)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="prefStyle">Travel Style</label>
-                            <select id="prefStyle">
-                                <option value="">Select Style</option>
-                                <option value="Adventure">⛰️ Adventure</option>
-                                <option value="Relaxation">🧘 Relaxation</option>
-                                <option value="Culture/History">🏛️ Culture/History</option>
-                                <option value="Family">👨‍👩‍👧‍👦 Family</option>
-                            </select>
-                        </div>
-                        <button type="submit" id="savePreferencesBtn" class="primary-action-btn">Save Profile to AI Memory</button>
-                    </form>
-                </div>
-                
-                <div class="context-section">
-                    <h4>Recent Context Used</h4>
-                    <div class="context-items" id="contextItems">
-                        <p class="no-context">Start chatting to track your travel style, destinations, and budget.</p>
-                    </div>
-                </div>
-            </aside>
-
             <div class="chat-main-area">
+                <div class="recent-trips-section">
+                    <h3>Recent Trip Ideas</h3>
+                    <div class="recent-trips" id="recentTrips">
+                        <p class="no-trips">Start chatting to see trip ideas based on your interests!</p>
+                    </div>
+                </div>
                 <div class="chat-messages" id="chatMessages">
                     <div class="message assistant-message welcome-message">
                         <div class="message-avatar">✈️</div>
@@ -104,7 +46,7 @@
                             </div>
                             <div class="message-text">
                                 <h3>Your Personal Travel Planner.</h3>
-                                <p>Ask me anything about trip planning, destinations, budgets, and more. Use the **🧠 button** above to set your travel profile manually!</p>
+                                <p>Ask me anything about trip planning, destinations, budgets, and more. Your recent trip ideas will appear above based on our conversation!</p>
                             </div>
                         </div>
                     </div>
@@ -136,7 +78,6 @@
                     </div>
                 </div>
             </div>
-            
         </div>
 
         <div class="input-area-fixed">

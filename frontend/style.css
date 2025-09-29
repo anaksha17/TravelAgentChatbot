@@ -607,3 +607,16 @@ h1, h2, h3, h4, p {
     background-color: #e64a19; /* Darker orange */
     transform: translateY(-1px);
 }
+
+/* Recent Trips Section */
+.recent-trips-section {
+    padding: 1rem;
+    border-bottom: 1px solid #333;
+}
+.recent-trips {
+    margin-top: 0.5rem;
+}
+.no-trips {
+    color: #888;
+    font-style: italic;
+}
