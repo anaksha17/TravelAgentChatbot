@@ -620,3 +620,232 @@ h1, h2, h3, h4, p {
     color: #888;
     font-style: italic;
 }
+/* Smart Suggestions Styling */
+.smart-suggestions {
+    margin: 15px auto 20px auto;
+    max-width: 85%;
+    padding: 15px;
+    background: linear-gradient(135deg, rgba(255, 87, 34, 0.08) 0%, rgba(255, 152, 0, 0.08) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 87, 34, 0.2);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.suggestion-label {
+    font-size: 0.85rem;
+    color: var(--secondary-color);
+    margin-bottom: 10px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.suggestion-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.suggestion-btn-smart {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3);
+    white-space: nowrap;
+}
+
+.suggestion-btn-smart:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 87, 34, 0.5);
+    background: linear-gradient(135deg, #e64a19 0%, #fb8c00 100%);
+}
+
+.suggestion-btn-smart:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .smart-suggestions {
+        max-width: 95%;
+        padding: 12px;
+    }
+    
+    .suggestion-btn-smart {
+        font-size: 0.8rem;
+        padding: 8px 14px;
+    }
+}
+.typing-dots {
+    display: flex;
+    gap: 4px;
+    padding: 10px;
+}
+
+.typing-dots span {
+    width: 8px;
+    height: 8px;
+    background: #007bff;
+    border-radius: 50%;
+    animation: typing 1.4s infinite;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-10px); }
+}
+/* Chat History Sidebar */
+.chat-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.chat-history-item {
+    padding: 10px;
+    background: var(--card-background);
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.chat-history-item:hover {
+    background: rgba(255, 87, 34, 0.1);
+    transform: translateX(5px);
+}
+
+.chat-title {
+    font-size: 0.85rem;
+    color: var(--text-color-light);
+    margin-bottom: 4px;
+}
+
+.chat-meta {
+    font-size: 0.7rem;
+    color: var(--text-color-muted);
+    display: flex;
+    justify-content: space-between;
+}
+/* Sidebar Toggle Button */
+.sidebar-toggle-btn {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255, 87, 34, 0.4);
+    z-index: 100;
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(255, 87, 34, 0.6);
+}
+
+/* Sidebar - Hidden by default */
+.sidebar {
+    position: fixed;
+    right: -320px; /* Hidden off-screen */
+    top: 60px;
+    width: 300px;
+    height: calc(100vh - 60px);
+    background-color: var(--input-background);
+    border-left: 1px solid var(--border-color);
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: right 0.3s ease-in-out;
+    z-index: 99;
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.5);
+}
+
+/* Sidebar visible state */
+.sidebar.visible {
+    right: 0;
+}
+
+/* Sidebar close button */
+.sidebar-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    background: var(--card-background);
+    color: var(--text-color-light);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+}
+
+.sidebar-close-btn:hover {
+    background: var(--primary-color);
+    transform: rotate(90deg);
+}
+
+/* Context sections in sidebar */
+.context-section {
+    background: var(--card-background);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.context-section h4 {
+    color: var(--secondary-color);
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Make sure sidebar doesn't overlap chat on mobile */
+@media (max-width: 900px) {
+    .sidebar {
+        width: 280px;
+        right: -280px;
+    }
+}

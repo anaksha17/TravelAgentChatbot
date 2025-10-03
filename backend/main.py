@@ -7,7 +7,7 @@ from typing import List, Optional
 import os
 from dotenv import load_dotenv
 from groq import Groq
-
+from datetime import datetime
 import sys
 import os
 # Add current directory to Python path
@@ -103,12 +103,24 @@ async def chat_endpoint(chat_message: ChatMessage):
         # Generate context-aware prompt using LangChain + ChromaDB
         context_prompt = memory_manager.generate_context_prompt(user_message)
         
-        # Get AI response with professional formatting
-        messages = [
-            {"role": "system", "content": context_prompt},
-            {"role": "user", "content": user_message}
-        ]
-        
+        # Get conversation history from LangChain
+        context = memory_manager.get_conversation_context(user_message)
+        recent_messages = context.get("recent_history", [])
+
+        # Build messages with history
+        messages = [{"role": "system", "content": context_prompt}]
+
+        # Add recent conversation history (last 6 messages)
+        for msg in recent_messages[-6:]:
+            if hasattr(msg, 'type'):
+                if msg.type == "human":
+                    messages.append({"role": "user", "content": msg.content})
+                elif msg.type == "ai":
+                    messages.append({"role": "assistant", "content": msg.content})
+
+        # Add current message
+        messages.append({"role": "user", "content": user_message})
+
         response = groq_client.chat.completions.create(
             messages=messages,
             model="llama-3.1-8b-instant",
@@ -156,7 +168,102 @@ async def chat_endpoint(chat_message: ChatMessage):
             )
         except Exception as fallback_error:
             raise HTTPException(status_code=500, detail=f"Chat system error: {str(fallback_error)}")
+@app.post("/api/suggestions")
+async def get_smart_suggestions(chat_message: ChatMessage):
+    """Generate smart follow-up suggestions based on conversation"""
+    try:
+        user_id = chat_message.user_id
+        last_message = chat_message.message
+        
+        # Get memory context
+        if user_id in memory_managers:
+            memory_manager = memory_managers[user_id]
+            context = memory_manager.get_conversation_context(last_message)
+            recent_history = context.get("recent_history", [])
+            
+            # Build context from last 2-3 messages
+            context_text = ""
+            for msg in recent_history[-4:]:
+                if hasattr(msg, 'type'):
+                    if msg.type == "human":
+                        context_text += f"User: {msg.content}\n"
+                    elif msg.type == "ai":
+                        context_text += f"Bot: {msg.content[:200]}\n"
+        else:
+            context_text = f"User: {last_message}"
+        
+        # Ask Groq to generate smart suggestions
+        prompt = f"""Based on this travel conversation, suggest 3 short follow-up questions the user might ask next.
 
+Conversation:
+{context_text}
+
+Generate 3 relevant follow-up questions (each max 6 words). Format as simple list:
+1. [question]
+2. [question]
+3. [question]
+
+Be specific to the destinations/topics discussed."""
+
+        response = groq_client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.1-8b-instant",
+            max_tokens=150,
+            temperature=0.7
+        )
+        
+        suggestions_text = response.choices[0].message.content.strip()
+        
+        # Parse suggestions (extract just the questions)
+        suggestions = []
+        for line in suggestions_text.split('\n'):
+            line = line.strip()
+            if line and (line[0].isdigit() or line.startswith('-')):
+                # Remove numbering/bullets
+                suggestion = line.split('.', 1)[-1].strip()
+                suggestion = suggestion.lstrip('- ').strip()
+                if suggestion:
+                    suggestions.append(suggestion)
+        
+        return {"suggestions": suggestions[:3]}
+        
+    except Exception as e:
+        print(f"Suggestion error: {e}")
+        # Fallback to generic suggestions
+        return {"suggestions": ["Tell me more", "What about hotels?", "Budget tips?"]}
+    
+@app.get("/api/conversations/{user_id}")
+async def get_conversation_history(user_id: str):
+    """Get list of past conversations for sidebar"""
+    try:
+        if user_id in memory_managers:
+            memory_manager = memory_managers[user_id]
+            context = memory_manager.get_conversation_context("")
+            recent_messages = context.get("recent_history", [])
+            
+            # Group messages into conversations
+            conversations = []
+            if len(recent_messages) >= 2:
+                # Get first user message as title
+                for i, msg in enumerate(recent_messages):
+                    if hasattr(msg, 'type') and msg.type == "human":
+                        title = msg.content[:40] + "..." if len(msg.content) > 40 else msg.content
+                        conversations.append({
+                            "id": i,
+                            "title": title,
+                            "timestamp": datetime.now().isoformat(),
+                            "message_count": len(recent_messages)
+                        })
+                        break
+            
+            return {"conversations": conversations[:5]}  # Last 5 conversations
+        
+        return {"conversations": []}
+        
+    except Exception as e:
+        print(f"History error: {e}")
+        return {"conversations": []}
+        
 @app.get("/api/memory/{user_id}")
 async def get_memory_stats(user_id: str):
     """Get LangChain memory statistics for a user"""
@@ -196,7 +303,7 @@ async def clear_user_memory(user_id: str):
 @app.get("/api/stats")
 async def get_api_stats():
     """Get overall API statistics"""
-    total_users = len(memory_managers)
+    total_users = len(memory_managers)   
     
     memory_stats = {}
     for user_id, manager in memory_managers.items():

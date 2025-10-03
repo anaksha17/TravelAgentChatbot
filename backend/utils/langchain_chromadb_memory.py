@@ -13,6 +13,8 @@ from datetime import datetime
 
 class GroqLangChainLLM(LLM):
     """LangChain wrapper for Groq API"""
+    groq_client: Any = None
+    model_name: str = "llama-3.1-8b-instant"
     
     def __init__(self, groq_client, model_name: str = "llama-3.1-8b-instant"):
         super().__init__()
@@ -24,7 +26,7 @@ class GroqLangChainLLM(LLM):
             response = self.groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model=self.model_name,
-                max_tokens=200,  # Short responses for summaries
+                max_tokens=200,
                 temperature=0.3
             )
             return response.choices[0].message.content.strip()
@@ -60,7 +62,6 @@ class TravelLangChainMemory:
         except Exception as e:
             print(f"❌ Error loading embeddings: {e}")
             self.embeddings = None
-            return
         
         # Setup ChromaDB persistent storage
         self.persist_directory = f"./chroma_db_{user_id}"
@@ -86,7 +87,6 @@ class TravelLangChainMemory:
         except Exception as e:
             print(f"❌ Error initializing ChromaDB: {e}")
             self.vectorstore = None
-            return
         
         # Initialize LangChain memory types
         self._init_langchain_memories()
@@ -105,26 +105,25 @@ class TravelLangChainMemory:
         
         # 1. Buffer Window Memory - keeps last N exchanges
         self.buffer_memory = ConversationBufferWindowMemory(
-            k=6,  # Keep last 6 messages (3 exchanges)
+            k=6,
             return_messages=True,
             memory_key="chat_history"
         )
         
-        # 2. Summary Buffer Memory - summarizes old conversations
-        self.summary_memory = ConversationSummaryBufferMemory(
-            llm=self.llm,
-            max_token_limit=800,  # Summarize when context gets too long
-            return_messages=True,
-            memory_key="summary"
-        )
+        # 2. Disable Summary Memory (causing issues)
+        self.summary_memory = None
         
         # 3. Vector Store Retriever Memory - semantic search through all conversations
         if self.vectorstore:
-            self.vector_memory = VectorStoreRetrieverMemory(
-                vectorstore=self.vectorstore,
-                memory_key="relevant_history",
-                return_docs=True
-            )
+            try:
+                self.vector_memory = VectorStoreRetrieverMemory(
+                    vectorstore=self.vectorstore,
+                    memory_key="relevant_history",
+                    return_docs=True
+                )
+            except Exception as e:
+                print(f"⚠️ Vector memory not available: {e}")
+                self.vector_memory = None
         else:
             self.vector_memory = None
             print("⚠️ Vector memory not available - ChromaDB initialization failed")
@@ -137,19 +136,17 @@ class TravelLangChainMemory:
             self.buffer_memory.chat_memory.add_user_message(user_message)
             self.buffer_memory.chat_memory.add_ai_message(ai_response)
             
-            # Add to summary memory
-            self.summary_memory.chat_memory.add_user_message(user_message)
-            self.summary_memory.chat_memory.add_ai_message(ai_response)
-            
-            # Add to vector memory for semantic search
+            # Add to vector memory if available
             if self.vector_memory:
-                conversation_text = f"User: {user_message}\nAssistant: {ai_response}"
-                self.vector_memory.save_context(
-                    {"input": user_message},
-                    {"output": ai_response}
-                )
+                try:
+                    conversation_text = f"User: {user_message}\nAssistant: {ai_response}"
+                    self.vector_memory.save_context(
+                        {"input": user_message},
+                        {"output": ai_response}
+                    )
+                except Exception as e:
+                    print(f"⚠️ Vector save failed: {e}")
             
-            # Extract and update travel preferences
             self._update_travel_preferences(user_message, ai_response)
             
             print(f"💾 Saved conversation to LangChain memories")
@@ -163,22 +160,23 @@ class TravelLangChainMemory:
         context = {}
         
         try:
-            # Get recent conversation from buffer memory
+            # Get recent buffer history
             buffer_vars = self.buffer_memory.load_memory_variables({})
             context["recent_history"] = buffer_vars.get("chat_history", [])
             
-            # Get conversation summary
-            summary_vars = self.summary_memory.load_memory_variables({})
-            context["conversation_summary"] = summary_vars.get("summary", "")
+            # No summary (disabled)
+            context["conversation_summary"] = ""
             
-            # Get semantically similar past conversations
-            if self.vector_memory:
+            # Get relevant history from vector store
+            if self.vector_memory and current_message:
                 try:
                     vector_vars = self.vector_memory.load_memory_variables({"prompt": current_message})
                     context["relevant_history"] = vector_vars.get("relevant_history", "")
                 except Exception as e:
                     print(f"⚠️ Vector search failed: {e}")
                     context["relevant_history"] = ""
+            else:
+                context["relevant_history"] = ""
             
             # Add user preferences
             context["user_preferences"] = self.user_preferences
@@ -213,7 +211,7 @@ TRAVEL EXPERTISE:
 - Consider user's budget, style, and preferences
 - Offer alternatives and options"""
         
-        # Add user preferences if available
+        # Add user preferences
         preferences = context.get("user_preferences", {})
         if preferences.get("destinations_interested"):
             prompt += f"\n\nUSER'S TRAVEL PROFILE:"
@@ -225,22 +223,17 @@ TRAVEL EXPERTISE:
             if preferences.get("travel_style"):
                 prompt += f"\n• Travel style: {preferences['travel_style']}"
         
-        # Add conversation summary if available
-        summary = context.get("conversation_summary", "")
-        if summary and len(summary.strip()) > 10:
-            prompt += f"\n\nCONVERSATION SUMMARY:\n{summary}"
-        
         # Add recent conversation history
         recent_history = context.get("recent_history", [])
         if recent_history and len(recent_history) > 0:
             prompt += f"\n\nRECENT CONVERSATION:"
-            for msg in recent_history[-4:]:  # Last 4 messages
+            for msg in recent_history[-4:]:
                 if isinstance(msg, HumanMessage):
                     prompt += f"\nUser: {msg.content}"
                 elif isinstance(msg, AIMessage):
                     prompt += f"\nAssistant: {msg.content[:150]}..."
         
-        # Add relevant past conversations if available
+        # Add relevant history from vector store
         relevant_history = context.get("relevant_history", "")
         if relevant_history and len(str(relevant_history).strip()) > 10:
             prompt += f"\n\nRELEVANT PAST DISCUSSIONS:\n{relevant_history}"
@@ -268,7 +261,7 @@ TRAVEL EXPERTISE:
                 if formatted_dest not in self.user_preferences["destinations_interested"]:
                     self.user_preferences["destinations_interested"].append(formatted_dest)
         
-        # Extract budget preference
+        # Extract budget preferences
         if any(word in combined_text for word in ["budget", "cheap", "affordable"]):
             self.user_preferences["budget_preference"] = "budget"
         elif any(word in combined_text for word in ["luxury", "premium", "expensive"]):
@@ -323,7 +316,6 @@ TRAVEL EXPERTISE:
     def _load_existing_conversations(self):
         """Load any existing conversations into memory"""
         try:
-            # Check if we have existing data in ChromaDB
             if self.vectorstore:
                 docs = self.vectorstore.similarity_search("travel", k=1)
                 if docs:
@@ -341,7 +333,6 @@ TRAVEL EXPERTISE:
         
         try:
             if self.vectorstore:
-                # Try to get count of documents in vector store
                 docs = self.vectorstore.similarity_search("", k=100)
                 stats["vector_documents"] = len(docs)
         except:
@@ -352,13 +343,11 @@ TRAVEL EXPERTISE:
     def clear_memory(self):
         """Clear all memory"""
         try:
-            # Clear LangChain memories
+            # Clear buffer memory
             self.buffer_memory.clear()
-            self.summary_memory.clear()
             
             # Clear vector store
             if self.vectorstore:
-                # Delete the collection and recreate
                 try:
                     self.chroma_client.delete_collection(self.collection_name)
                     # Recreate collection
@@ -386,13 +375,12 @@ TRAVEL EXPERTISE:
         except Exception as e:
             print(f"❌ Error clearing memory: {e}")
 
-# Test function
+
 def test_langchain_memory():
     """Test the LangChain + ChromaDB memory system"""
     print("🧪 Testing LangChain + ChromaDB Memory System")
     print("This system provides:")
     print("• ConversationBufferWindowMemory - Recent conversation context")
-    print("• ConversationSummaryBufferMemory - Automatic conversation summarization")  
     print("• VectorStoreRetrieverMemory - Semantic search through all conversations")
     print("• ChromaDB - Free persistent vector storage")
     print("• SentenceTransformers - Free embedding generation")

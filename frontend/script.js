@@ -113,11 +113,15 @@ async function sendMessage() {
         const data = await response.json();
         
         // Hide typing indicator and show response
-        hideTypingIndicator();
-        addMessage(data.response, 'assistant', data.context_used, data.sources);
-        
-        // Update memory stats in sidebar
-        updateMemoryStats();
+hideTypingIndicator();
+addMessage(data.response, 'assistant', data.context_used, data.sources);
+
+// Add smart suggestions after bot response
+addSmartSuggestions(data.response);
+
+// Update memory stats in sidebar
+updateMemoryStats();
+updateChatHistory();
         
     } catch (error) {
         console.error('Error sending message:', error);
@@ -129,6 +133,55 @@ async function sendMessage() {
     } finally {
         setInputEnabled(true);
         messageInput.focus();
+    }
+}
+// AI-Powered Smart Suggestions
+async function addSmartSuggestions(lastBotMessage) {
+    // Remove old suggestions
+    const oldSuggestions = document.querySelector('.smart-suggestions');
+    if (oldSuggestions) oldSuggestions.remove();
+    
+    try {
+        // Get AI-generated suggestions from backend
+        const response = await fetch(`${API_BASE}/api/suggestions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: lastBotMessage,
+                user_id: userId
+            })
+        });
+        
+        const data = await response.json();
+        const suggestions = data.suggestions || [];
+        
+        if (suggestions.length > 0) {
+            const suggestionsDiv = document.createElement('div');
+            suggestionsDiv.className = 'smart-suggestions';
+            suggestionsDiv.innerHTML = '<p class="suggestion-label">💡 You might want to ask:</p>';
+            
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'suggestion-buttons-container';
+            
+            suggestions.forEach(suggestion => {
+                const btn = document.createElement('button');
+                btn.className = 'suggestion-btn-smart';
+                btn.textContent = suggestion;
+                btn.onclick = () => {
+                    messageInput.value = suggestion;
+                    sendMessage();
+                };
+                buttonsContainer.appendChild(btn);
+            });
+            
+            suggestionsDiv.appendChild(buttonsContainer);
+            chatMessages.appendChild(suggestionsDiv);
+            scrollToBottom();
+        }
+    } catch (error) {
+        console.error('Error getting suggestions:', error);
     }
 }
 
@@ -158,6 +211,49 @@ async function updateMemoryStats() {
     } catch (error) {
         console.error('Error updating memory stats:', error);
     }
+}
+async function updateChatHistory() {
+    try {
+        const response = await fetch(`${API_BASE}/api/conversations/${userId}`);
+        const data = await response.json();
+        
+        const chatHistory = document.getElementById('chatHistory');
+        if (!chatHistory) return;
+        
+        const conversations = data.conversations || [];
+        
+        if (conversations.length === 0) {
+            chatHistory.innerHTML = '<p class="no-context">No previous chats</p>';
+            return;
+        }
+        
+        let html = '';
+        conversations.forEach(conv => {
+            const date = new Date(conv.timestamp);
+            const timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+            
+            html += `
+                <div class="chat-history-item" onclick="loadConversation('${conv.id}')">
+                    <div class="chat-title">${conv.title}</div>
+                    <div class="chat-meta">
+                        <span>💬 ${conv.message_count} messages</span>
+                        <span>${timeStr}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        chatHistory.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading chat history:', error);
+    }
+}
+
+function loadConversation(convId) {
+    // For now just scroll to top to show existing conversation
+    chatMessages.scrollTop = 0;
+    // In future, you could load specific conversation from database
 }
 
 function updateContextItems(preferences, recentTopics) {
@@ -245,6 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     checkApiStatus();
     updateMemoryStats(); // Load initial memory stats
+    updateChatHistory(); 
 });
 
 function addMessage(content, sender, contextUsed = [], sources = []) {
@@ -357,13 +454,25 @@ function formatBotMessage(content) {
 
 function showTypingIndicator() {
     isTyping = true;
-    typingIndicator.style.display = 'flex';
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message assistant-message';
+    typingDiv.id = 'typing-indicator-msg';
+    typingDiv.innerHTML = `
+        <div class="message-avatar">🤖</div>
+        <div class="message-content">
+            <div class="typing-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    `;
+    chatMessages.appendChild(typingDiv);
     scrollToBottom();
 }
 
 function hideTypingIndicator() {
     isTyping = false;
-    typingIndicator.style.display = 'none';
+    const indicator = document.getElementById('typing-indicator-msg');
+    if (indicator) indicator.remove();
 }
 
 function setInputEnabled(enabled) {
@@ -376,7 +485,30 @@ function setInputEnabled(enabled) {
         messageInput.placeholder = 'TravelBuddy is thinking...';
     }
 }
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('visible');
+}
 
+// Auto-close sidebar when user starts typing
+messageInput.addEventListener('focus', function() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar.classList.contains('visible')) {
+        sidebar.classList.remove('visible');
+    }
+});
+
+// Close sidebar when clicking outside
+document.addEventListener('click', function(event) {
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('sidebarToggle');
+    
+    if (sidebar.classList.contains('visible') && 
+        !sidebar.contains(event.target) && 
+        !toggleBtn.contains(event.target)) {
+        sidebar.classList.remove('visible');
+    }
+});
 function scrollToBottom() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }

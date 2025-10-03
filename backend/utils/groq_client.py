@@ -12,10 +12,10 @@ class GroqClient:
         
         self.client = Groq(api_key=self.api_key)
         
-        # Available models - you can switch these based on needs
+
         self.models = {
-            "fast": "llama-3.1-8b-instant",      # Faster responses
-            "smart": "llama-3.1-70b-versatile",  # Better quality
+            "fast": "llama-3.1-8b-instant",     
+            "smart": "llama-3.1-70b-versatile",  
             "default": "llama-3.1-70b-versatile"
         }
         
