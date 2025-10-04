@@ -111,7 +111,6 @@ class GroqClient:
         else:
             raise ValueError(f"Model {model_key} not available. Use: {list(self.models.keys())}")
 
-# Test function
 async def test_groq_client():
     """Test the Groq client functionality"""
     try:

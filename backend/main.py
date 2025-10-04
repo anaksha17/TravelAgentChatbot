@@ -10,17 +10,17 @@ from groq import Groq
 from datetime import datetime
 import sys
 import os
-# Add current directory to Python path
+ 
 sys.path.append(os.path.dirname(__file__))
 
 from utils.langchain_chromadb_memory import TravelLangChainMemory
 
-# Load environment variables
+ 
 load_dotenv()
 
 app = FastAPI(title="Travel RAG Assistant", version="1.0.0")
 
-# Enable CORS
+ 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,10 +29,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Groq
+ 
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# Check if frontend directory exists and mount static files
+ 
 frontend_path = "frontend"
 if os.path.exists(frontend_path):
     app.mount("/static", StaticFiles(directory=frontend_path), name="static")
@@ -40,10 +40,9 @@ if os.path.exists(frontend_path):
 else:
     print(f"❌ Frontend directory not found: {os.path.abspath(frontend_path)}")
 
-# LangChain + ChromaDB memory managers for each user
+ 
 memory_managers = {}
-
-# Request/Response models
+ 
 class ChatMessage(BaseModel):
     message: str
     user_id: Optional[str] = "default_user"
@@ -55,7 +54,7 @@ class ChatResponse(BaseModel):
 
 @app.get("/")
 async def root():
-    # Try to serve index.html if it exists
+    
     index_path = os.path.join(frontend_path, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
@@ -70,7 +69,7 @@ async def root():
 @app.get("/health")
 async def health_check():
     try:
-        # Test Groq connection
+       
         test_response = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": "Hi"}],
             model="llama-3.1-8b-instant",
@@ -94,23 +93,22 @@ async def chat_endpoint(chat_message: ChatMessage):
         user_id = chat_message.user_id
         user_message = chat_message.message
         
-        # Get or create LangChain memory manager for user
+        
         if user_id not in memory_managers:
             memory_managers[user_id] = TravelLangChainMemory(groq_client, user_id)
         
         memory_manager = memory_managers[user_id]
         
-        # Generate context-aware prompt using LangChain + ChromaDB
+       
         context_prompt = memory_manager.generate_context_prompt(user_message)
         
-        # Get conversation history from LangChain
+      
         context = memory_manager.get_conversation_context(user_message)
         recent_messages = context.get("recent_history", [])
 
-        # Build messages with history
+       
         messages = [{"role": "system", "content": context_prompt}]
-
-        # Add recent conversation history (last 6 messages)
+ 
         for msg in recent_messages[-6:]:
             if hasattr(msg, 'type'):
                 if msg.type == "human":
@@ -118,7 +116,7 @@ async def chat_endpoint(chat_message: ChatMessage):
                 elif msg.type == "ai":
                     messages.append({"role": "assistant", "content": msg.content})
 
-        # Add current message
+    
         messages.append({"role": "user", "content": user_message})
 
         response = groq_client.chat.completions.create(
@@ -130,11 +128,10 @@ async def chat_endpoint(chat_message: ChatMessage):
         )
         
         ai_response = response.choices[0].message.content
-        
-        # Add to LangChain memory system
+       
         memory_manager.add_conversation(user_message, ai_response)
         
-        # Get memory stats for frontend
+     
         context = memory_manager.get_conversation_context(user_message)
         memory_stats = context.get("memory_stats", {})
         
@@ -150,7 +147,7 @@ async def chat_endpoint(chat_message: ChatMessage):
         
     except Exception as e:
         print(f"Chat error: {e}")
-        # Fallback to simple response if memory fails
+        
         try:
             simple_response = groq_client.chat.completions.create(
                 messages=[
@@ -175,13 +172,13 @@ async def get_smart_suggestions(chat_message: ChatMessage):
         user_id = chat_message.user_id
         last_message = chat_message.message
         
-        # Get memory context
+         
         if user_id in memory_managers:
             memory_manager = memory_managers[user_id]
             context = memory_manager.get_conversation_context(last_message)
             recent_history = context.get("recent_history", [])
             
-            # Build context from last 2-3 messages
+           
             context_text = ""
             for msg in recent_history[-4:]:
                 if hasattr(msg, 'type'):
@@ -192,7 +189,7 @@ async def get_smart_suggestions(chat_message: ChatMessage):
         else:
             context_text = f"User: {last_message}"
         
-        # Ask Groq to generate smart suggestions
+        
         prompt = f"""Based on this travel conversation, suggest 3 short follow-up questions the user might ask next.
 
 Conversation:
@@ -214,12 +211,12 @@ Be specific to the destinations/topics discussed."""
         
         suggestions_text = response.choices[0].message.content.strip()
         
-        # Parse suggestions (extract just the questions)
+         
         suggestions = []
         for line in suggestions_text.split('\n'):
             line = line.strip()
             if line and (line[0].isdigit() or line.startswith('-')):
-                # Remove numbering/bullets
+                
                 suggestion = line.split('.', 1)[-1].strip()
                 suggestion = suggestion.lstrip('- ').strip()
                 if suggestion:
@@ -229,7 +226,7 @@ Be specific to the destinations/topics discussed."""
         
     except Exception as e:
         print(f"Suggestion error: {e}")
-        # Fallback to generic suggestions
+     
         return {"suggestions": ["Tell me more", "What about hotels?", "Budget tips?"]}
     
 @app.get("/api/conversations/{user_id}")
@@ -241,10 +238,9 @@ async def get_conversation_history(user_id: str):
             context = memory_manager.get_conversation_context("")
             recent_messages = context.get("recent_history", [])
             
-            # Group messages into conversations
             conversations = []
             if len(recent_messages) >= 2:
-                # Get first user message as title
+               
                 for i, msg in enumerate(recent_messages):
                     if hasattr(msg, 'type') and msg.type == "human":
                         title = msg.content[:40] + "..." if len(msg.content) > 40 else msg.content
@@ -256,7 +252,7 @@ async def get_conversation_history(user_id: str):
                         })
                         break
             
-            return {"conversations": conversations[:5]}  # Last 5 conversations
+            return {"conversations": conversations[:5]}  
         
         return {"conversations": []}
         
